@@ -1,1 +1,12 @@
 # 5300_project
+
+# Washington DC Airbnb data
+data was collected from: https://insideairbnb.com/get-the-data/
+
+listings.csv - https://data.insideairbnb.com/united-states/dc/washington-dc/2023-12-18/data/listings.csv.gz
+calendar.csv.gz - https://data.insideairbnb.com/united-states/dc/washington-dc/2023-12-18/data/calendar.csv.gz
+reviews.csv.gz - https://data.insideairbnb.com/united-states/dc/washington-dc/2023-12-18/data/reviews.csv.gz
+neighbourhoods.csv - https://data.insideairbnb.com/united-states/dc/washington-dc/2023-12-18/visualisations/neighbourhoods.csv
+neighbourhoods.geojson - https://data.insideairbnb.com/united-states/dc/washington-dc/2023-12-18/visualisations/neighbourhoods.geojson
+
+all data file need to be downloaded by every member of the project and put into "./data/".
