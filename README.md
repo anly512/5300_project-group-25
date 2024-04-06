@@ -10,3 +10,11 @@ neighbourhoods.csv - https://data.insideairbnb.com/united-states/dc/washington-d
 neighbourhoods.geojson - https://data.insideairbnb.com/united-states/dc/washington-dc/2023-12-18/visualisations/neighbourhoods.geojson
 
 all data file need to be downloaded by every member of the project and put into "./data/".
+
+
+
+# Zillow APi
+
+using zillow api by scrapeak.com to pull data
+sign up for a free account here: https://www.scrapeak.com/zillow-scraper/
+documntation for api can be found: https://docs.scrapeak.com/zillow-scraper/endpoints/listing
