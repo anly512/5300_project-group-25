@@ -1,0 +1,25 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(leaflet)
+library(sf)
+library(geojsonsf)
+
+dc = geojson_sf("./data/neighbourhoods.geojson")
+df = read.csv("./data/listings.csv") %>%
+    mutate(price = as.numeric(str_remove(price, "\\$"))) %>%
+    filter(room_type == "Entire home/apt")
+```
+
+```{r}
+# group by neighborhood and change the radius by the price - price comparison
+m = leaflet(data=dc, height=2500, width=2500) %>%
+    addTiles(group = "CartoDB.Voyager") %>%
+    setView(lng = -77.02, lat = 38.9, zoom = 11.5)
+m %>%
+    addCircleMarkers(lng = df$longitude, lat = df$latitude, radius = 1.5, label = df$price, fillOpacity = 1, opacity = 1, color = "red", stroke = FALSE)
+```
