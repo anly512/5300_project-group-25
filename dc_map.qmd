@@ -1,0 +1,52 @@
+---
+title: "A5: Interactive Visualizations"
+author: Eric Dapkus
+execute:
+  echo: false
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, out.width = '100%'}
+#| warning: false
+#| vscode: {languageId: r}
+#import libraries
+library(tidyverse)
+library(leaflet)
+library(sf)
+library(geojsonio)
+library(plotly)
+#load datasets
+# data(state.abb)
+data(state)
+htmltitle <- "Airbnb in DC"
+#import map
+my_map <- st_read("data/tl_2020_us_state/tl_2020_us_state.shp")%>%
+  sf::st_transform('+proj=longlat +datum=WGS84')
+
+my_map <- my_map %>%
+    filter(!STUSPS %in% c("AK", "AS", "GU", "HI", "MP", "PR", "UM", "VI"))
+
+#import df 
+df <- read.csv(gzfile("data/listings.csv.gz"))
+
+my_map <- leaflet(height=2000, width=2000) %>%
+  addTiles()
+# Add circle markers to the map
+my_map <- addCircleMarkers(map = my_map,
+                            lng = df$longitude,
+                            lat = df$latitude,
+                            radius = 1, # Adjust the size of the marker as needed
+                            color = "red",
+                            stroke = FALSE,
+                            fillOpacity = 0.8)
+my_map <- my_map %>%
+  addTiles() %>%
+    addControl(html=htmltitle, position = "topright")
+
+# View the map
+my_map
+```

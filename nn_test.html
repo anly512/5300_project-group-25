@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.551">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Listings Data Cleaning</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="nn_test_files/libs/clipboard/clipboard.min.js"></script>
+<script src="nn_test_files/libs/quarto-html/quarto.js"></script>
+<script src="nn_test_files/libs/quarto-html/popper.min.js"></script>
+<script src="nn_test_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="nn_test_files/libs/quarto-html/anchor.min.js"></script>
+<link href="nn_test_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="nn_test_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="nn_test_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="nn_test_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="nn_test_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Listings Data Cleaning</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div id="cell-2" class="cell" data-execution_count="175">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.model_selection <span class="im">import</span> train_test_split</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.preprocessing <span class="im">import</span> StandardScaler</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tensorflow.keras.models <span class="im">import</span> Sequential</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tensorflow.keras.layers <span class="im">import</span> Dense, Dropout</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tensorflow.keras.callbacks <span class="im">import</span> EarlyStopping</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># pandas setting</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">'display.max_columns'</span>, <span class="va">None</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">'display.max_rows'</span>, <span class="dv">100</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>pd.set_option(<span class="st">'display.max_colwidth'</span>, <span class="va">None</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-3" class="cell" data-execution_count="167">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#code to read in csv.gz</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>listings <span class="op">=</span> pd.read_csv(<span class="st">'./data/listings.csv.gz'</span>, compression<span class="op">=</span><span class="st">'gzip'</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(listings.shape)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># listings.head(1)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>(6853, 75)</code></pre>
+</div>
+</div>
+<div id="cell-4" class="cell" data-execution_count="168">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">#remove columns that are not needed</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>listings.drop(listings.columns.difference([<span class="st">'listing_url'</span>, <span class="st">'name'</span>, <span class="st">'latitude'</span>, <span class="st">'longitude'</span>, <span class="st">'price'</span>,<span class="st">'neighbourhood_cleansed'</span>, <span class="st">'property_type'</span>, <span class="st">'room_type'</span>, <span class="st">'accommodates'</span>, <span class="st">'bathrooms_text'</span>, <span class="st">'availability_30'</span>, <span class="st">'availability_60'</span>,  <span class="st">'availability_90'</span>, <span class="st">'availability_365'</span>]), axis<span class="op">=</span><span class="dv">1</span>, inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#create a new col with the number of bedrooms</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>listings[<span class="st">'bedrooms'</span>] <span class="op">=</span> listings[<span class="st">'name'</span>].<span class="bu">str</span>.extract(<span class="vs">r'(\d+) bedroom'</span>, expand<span class="op">=</span><span class="va">False</span>).astype(<span class="bu">float</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">#replace Nan in bedrooms for the studios</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>listings[<span class="st">'bedrooms'</span>].fillna(<span class="dv">0</span>, inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#remove units that are only a room and not the entire building</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>listings <span class="op">=</span> listings[listings[<span class="st">'property_type'</span>].<span class="bu">str</span>.contains(<span class="st">'entire'</span>, case<span class="op">=</span><span class="va">False</span>, na<span class="op">=</span><span class="va">False</span>)]</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">#remove digits from bathrooms_text</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>listings[<span class="st">'bathrooms_text'</span>] <span class="op">=</span> listings[<span class="st">'bathrooms_text'</span>].<span class="bu">str</span>.replace(<span class="vs">r'[^\d.]'</span>, <span class="st">''</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>listings[<span class="st">'bathrooms_text'</span>] <span class="op">=</span> listings[<span class="st">'bathrooms_text'</span>].replace(<span class="st">''</span>, np.nan)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>listings[<span class="st">'bathrooms_text'</span>] <span class="op">=</span> listings[<span class="st">'bathrooms_text'</span>].astype(<span class="bu">float</span>)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co">#update bad bathroom data based on current listing</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>listings.loc[listings.index <span class="op">==</span> <span class="dv">3341</span>, <span class="st">'bathrooms_text'</span>] <span class="op">=</span> <span class="fl">1.5</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>listings.loc[listings.index <span class="op">==</span> <span class="dv">4584</span>, <span class="st">'bathrooms_text'</span>] <span class="op">=</span> <span class="fl">1.5</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>listings.loc[listings.index <span class="op">==</span> <span class="dv">4634</span>, <span class="st">'bathrooms_text'</span>] <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>listings.loc[listings.index <span class="op">==</span> <span class="dv">3040</span>, <span class="st">'bathrooms_text'</span>] <span class="op">=</span> <span class="fl">0.5</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="co">#remove rows with 0 bathrooms (listing no longer exists)</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>listings <span class="op">=</span> listings[listings[<span class="st">'bathrooms_text'</span>] <span class="op">!=</span> <span class="dv">0</span>]</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="co">#change price to float</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>listings[<span class="st">'price'</span>] <span class="op">=</span> listings[<span class="st">'price'</span>].<span class="bu">str</span>.replace(<span class="vs">r'[^\d.]'</span>, <span class="st">''</span>)</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>listings[<span class="st">'price'</span>] <span class="op">=</span> listings[<span class="st">'price'</span>].astype(<span class="bu">float</span>)</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a><span class="co">#remove more cols</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>listings.drop(listings.columns.difference([<span class="st">'latitude'</span>, <span class="st">'longitude'</span>, <span class="st">'price'</span>,<span class="st">'neighbourhood_cleansed'</span>, <span class="st">'bathrooms_text'</span>, <span class="st">'availability_30'</span>, <span class="st">'availability_60'</span>,   <span class="st">'availability_90'</span>, <span class="st">'availability_365'</span>]), axis<span class="op">=</span><span class="dv">1</span>, inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="co"># ohe neighbourhood</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>one_hot_encoded <span class="op">=</span> pd.get_dummies(listings[<span class="st">'neighbourhood_cleansed'</span>], prefix<span class="op">=</span><span class="st">'encoded_col_name'</span>)</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>listings <span class="op">=</span> pd.concat([listings, one_hot_encoded], axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a><span class="co">#drop nulls</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>listings <span class="op">=</span> listings.dropna()</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a><span class="co">#details</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(listings.shape)</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a><span class="co"># print(listings.dtypes)</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="co"># listings.sample(5)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>(4551, 48)</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>/tmp/ipykernel_349782/1790361364.py:10: FutureWarning: The default value of regex will change from True to False in a future version.
+  listings['bathrooms_text'] = listings['bathrooms_text'].str.replace(r'[^\d.]', '')
+/tmp/ipykernel_349782/1790361364.py:21: FutureWarning: The default value of regex will change from True to False in a future version.
+  listings['price'] = listings['price'].str.replace(r'[^\d.]', '')</code></pre>
+</div>
+</div>
+<div id="cell-5" class="cell" data-execution_count="169">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#train, val, test data</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> listings.drop(columns<span class="op">=</span>[<span class="st">'price'</span>] <span class="op">+</span> [col <span class="cf">for</span> col <span class="kw">in</span> listings.columns <span class="cf">if</span> col.startswith(<span class="st">'availability'</span>)])</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> listings[<span class="st">'price'</span>] <span class="op">*</span> (<span class="dv">90</span> <span class="op">-</span> listings[<span class="st">'availability_90'</span>])</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-6" class="cell" data-execution_count="170">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>X_train, X_test, y_train, y_test <span class="op">=</span> train_test_split(X, y, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Scale the numerical features</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>scaler <span class="op">=</span> StandardScaler()</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>X_train_scaled <span class="op">=</span> scaler.fit_transform(X_train.select_dtypes(include<span class="op">=</span>[np.number]))</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>X_test_scaled <span class="op">=</span> scaler.transform(X_test.select_dtypes(include<span class="op">=</span>[np.number]))</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co"># # Concatenate the scaled numerical features with the one-hot encoded categorical features</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># X_train_encoded = np.concatenate([X_train_scaled, X_train.select_dtypes(include=['uint8'])], axis=1)</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co"># X_test_encoded = np.concatenate([X_test_scaled, X_test.select_dtypes(include=['uint8'])], axis=1)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-7" class="cell" data-execution_count="178">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Define the model</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Sequential([</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    Dense(<span class="dv">64</span>, activation<span class="op">=</span><span class="st">'relu'</span>, input_shape<span class="op">=</span>(X_train_encoded.shape[<span class="dv">1</span>],)),</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    Dropout(<span class="fl">0.2</span>),</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    Dense(<span class="dv">128</span>, activation<span class="op">=</span><span class="st">'relu'</span>),</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    Dropout(<span class="fl">0.2</span>),</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    Dense(<span class="dv">64</span>, activation<span class="op">=</span><span class="st">'relu'</span>),</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    Dropout(<span class="fl">0.2</span>),</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    Dense(<span class="dv">1</span>, activation<span class="op">=</span><span class="st">'linear'</span>)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>])</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Compile the model</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>model.<span class="bu">compile</span>(optimizer<span class="op">=</span><span class="st">'adam'</span>, loss<span class="op">=</span><span class="st">'mean_squared_error'</span>)</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>early_stopping <span class="op">=</span> EarlyStopping(monitor<span class="op">=</span><span class="st">'val_loss'</span>, patience<span class="op">=</span><span class="dv">50</span>, restore_best_weights<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Train the model with early stopping</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>history <span class="op">=</span> model.fit(X_train_encoded, y_train, epochs<span class="op">=</span><span class="dv">5000</span>, batch_size<span class="op">=</span><span class="bu">len</span>(X_train_encoded),</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>                    validation_split<span class="op">=</span><span class="fl">0.2</span>, callbacks<span class="op">=</span>[early_stopping])</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Evaluate the model</span></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>test_loss <span class="op">=</span> model.evaluate(X_test_encoded, y_test)</span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Test Loss:"</span>, test_loss)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 1s 1s/step - loss: 249687248.0000 - val_loss: 297507296.0000
+Epoch 2/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249683808.0000 - val_loss: 297503872.0000
+Epoch 3/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249680192.0000 - val_loss: 297500544.0000
+Epoch 4/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249677280.0000 - val_loss: 297497280.0000
+Epoch 5/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249674272.0000 - val_loss: 297494080.0000
+Epoch 6/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249670864.0000 - val_loss: 297490848.0000
+Epoch 7/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249667792.0000 - val_loss: 297487584.0000
+Epoch 8/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249664320.0000 - val_loss: 297484096.0000
+Epoch 9/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249661008.0000 - val_loss: 297480512.0000
+Epoch 10/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 249657568.0000 - val_loss: 297476608.0000
+Epoch 11/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 249653728.0000 - val_loss: 297472352.0000
+Epoch 12/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249649936.0000 - val_loss: 297467872.0000
+Epoch 13/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249645552.0000 - val_loss: 297463008.0000
+Epoch 14/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249640720.0000 - val_loss: 297457760.0000
+Epoch 15/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249635760.0000 - val_loss: 297452064.0000
+Epoch 16/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249630048.0000 - val_loss: 297445952.0000
+Epoch 17/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249623248.0000 - val_loss: 297439296.0000
+Epoch 18/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249617936.0000 - val_loss: 297432128.0000
+Epoch 19/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249610448.0000 - val_loss: 297424384.0000
+Epoch 20/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249604208.0000 - val_loss: 297415968.0000
+Epoch 21/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249595792.0000 - val_loss: 297406816.0000
+Epoch 22/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249586928.0000 - val_loss: 297396864.0000
+Epoch 23/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249577408.0000 - val_loss: 297386176.0000
+Epoch 24/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249568064.0000 - val_loss: 297374528.0000
+Epoch 25/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249556096.0000 - val_loss: 297361952.0000
+Epoch 26/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249545520.0000 - val_loss: 297348320.0000
+Epoch 27/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 249532736.0000 - val_loss: 297333600.0000
+Epoch 28/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 249516800.0000 - val_loss: 297317568.0000
+Epoch 29/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249502736.0000 - val_loss: 297300320.0000
+Epoch 30/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249487248.0000 - val_loss: 297281600.0000
+Epoch 31/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 249472640.0000 - val_loss: 297261408.0000
+Epoch 32/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 249452112.0000 - val_loss: 297239616.0000
+Epoch 33/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 249429616.0000 - val_loss: 297216064.0000
+Epoch 34/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 249402768.0000 - val_loss: 297190752.0000
+Epoch 35/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 249384000.0000 - val_loss: 297163456.0000
+Epoch 36/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 249356608.0000 - val_loss: 297134144.0000
+Epoch 37/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249327216.0000 - val_loss: 297102624.0000
+Epoch 38/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 249305456.0000 - val_loss: 297068704.0000
+Epoch 39/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249268848.0000 - val_loss: 297032352.0000
+Epoch 40/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249234688.0000 - val_loss: 296993408.0000
+Epoch 41/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 249198432.0000 - val_loss: 296951680.0000
+Epoch 42/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 249160736.0000 - val_loss: 296907040.0000
+Epoch 43/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 249118896.0000 - val_loss: 296859296.0000
+Epoch 44/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 249071712.0000 - val_loss: 296808320.0000
+Epoch 45/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 39ms/step - loss: 249021872.0000 - val_loss: 296753888.0000
+Epoch 46/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 248970608.0000 - val_loss: 296695840.0000
+Epoch 47/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 248920000.0000 - val_loss: 296634080.0000
+Epoch 48/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 248866480.0000 - val_loss: 296568352.0000
+Epoch 49/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 248794320.0000 - val_loss: 296498464.0000
+Epoch 50/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 248718096.0000 - val_loss: 296424128.0000
+Epoch 51/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 248661360.0000 - val_loss: 296345248.0000
+Epoch 52/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 248582512.0000 - val_loss: 296261632.0000
+Epoch 53/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 248509184.0000 - val_loss: 296173056.0000
+Epoch 54/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 248418928.0000 - val_loss: 296079136.0000
+Epoch 55/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 248326736.0000 - val_loss: 295979872.0000
+Epoch 56/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 248227408.0000 - val_loss: 295874976.0000
+Epoch 57/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 248128208.0000 - val_loss: 295764096.0000
+Epoch 58/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 248034848.0000 - val_loss: 295647104.0000
+Epoch 59/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 247928768.0000 - val_loss: 295523808.0000
+Epoch 60/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 247818528.0000 - val_loss: 295393920.0000
+Epoch 61/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 247647808.0000 - val_loss: 295257024.0000
+Epoch 62/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 247540208.0000 - val_loss: 295112960.0000
+Epoch 63/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 247399888.0000 - val_loss: 294961472.0000
+Epoch 64/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 247261344.0000 - val_loss: 294802144.0000
+Epoch 65/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 247130000.0000 - val_loss: 294634816.0000
+Epoch 66/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 246984224.0000 - val_loss: 294459424.0000
+Epoch 67/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 246755040.0000 - val_loss: 294275232.0000
+Epoch 68/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 246643904.0000 - val_loss: 294082208.0000
+Epoch 69/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 246426480.0000 - val_loss: 293880032.0000
+Epoch 70/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 246211184.0000 - val_loss: 293668256.0000
+Epoch 71/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 246002976.0000 - val_loss: 293446720.0000
+Epoch 72/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 245850288.0000 - val_loss: 293215296.0000
+Epoch 73/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 45ms/step - loss: 245581616.0000 - val_loss: 292973376.0000
+Epoch 74/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 245368768.0000 - val_loss: 292720960.0000
+Epoch 75/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 245113328.0000 - val_loss: 292457408.0000
+Epoch 76/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 244937824.0000 - val_loss: 292182944.0000
+Epoch 77/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 244569952.0000 - val_loss: 291896896.0000
+Epoch 78/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 244344384.0000 - val_loss: 291599200.0000
+Epoch 79/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 244036320.0000 - val_loss: 291289280.0000
+Epoch 80/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 243778416.0000 - val_loss: 290967136.0000
+Epoch 81/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 243445280.0000 - val_loss: 290632480.0000
+Epoch 82/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 243039248.0000 - val_loss: 290284480.0000
+Epoch 83/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 242839328.0000 - val_loss: 289923392.0000
+Epoch 84/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 242433008.0000 - val_loss: 289549024.0000
+Epoch 85/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 241964512.0000 - val_loss: 289160736.0000
+Epoch 86/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 241642416.0000 - val_loss: 288758432.0000
+Epoch 87/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 241292208.0000 - val_loss: 288341824.0000
+Epoch 88/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 240902048.0000 - val_loss: 287910688.0000
+Epoch 89/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 240482368.0000 - val_loss: 287465024.0000
+Epoch 90/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 240110528.0000 - val_loss: 287004832.0000
+Epoch 91/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 239644272.0000 - val_loss: 286530048.0000
+Epoch 92/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 239202896.0000 - val_loss: 286040256.0000
+Epoch 93/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 238811792.0000 - val_loss: 285535488.0000
+Epoch 94/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 238187664.0000 - val_loss: 285015584.0000
+Epoch 95/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 237858096.0000 - val_loss: 284480704.0000
+Epoch 96/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 237308448.0000 - val_loss: 283931360.0000
+Epoch 97/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 236788224.0000 - val_loss: 283367264.0000
+Epoch 98/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 236148560.0000 - val_loss: 282787936.0000
+Epoch 99/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 235565664.0000 - val_loss: 282193568.0000
+Epoch 100/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 235100144.0000 - val_loss: 281584416.0000
+Epoch 101/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 234467728.0000 - val_loss: 280960480.0000
+Epoch 102/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 233685776.0000 - val_loss: 280320480.0000
+Epoch 103/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 233144432.0000 - val_loss: 279665728.0000
+Epoch 104/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 232464112.0000 - val_loss: 278995712.0000
+Epoch 105/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 232081840.0000 - val_loss: 278311648.0000
+Epoch 106/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 231097648.0000 - val_loss: 277613024.0000
+Epoch 107/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 230563616.0000 - val_loss: 276900032.0000
+Epoch 108/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 229900736.0000 - val_loss: 276173888.0000
+Epoch 109/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 229253120.0000 - val_loss: 275434976.0000
+Epoch 110/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 228372368.0000 - val_loss: 274683040.0000
+Epoch 111/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 227867280.0000 - val_loss: 273918816.0000
+Epoch 112/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 227111296.0000 - val_loss: 273143552.0000
+Epoch 113/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 226124480.0000 - val_loss: 272357984.0000
+Epoch 114/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step - loss: 225555632.0000 - val_loss: 271562176.0000
+Epoch 115/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 224568960.0000 - val_loss: 270756320.0000
+Epoch 116/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 223943360.0000 - val_loss: 269941152.0000
+Epoch 117/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 223169568.0000 - val_loss: 269117792.0000
+Epoch 118/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 222797376.0000 - val_loss: 268288992.0000
+Epoch 119/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 221219648.0000 - val_loss: 267453152.0000
+Epoch 120/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 220819552.0000 - val_loss: 266611616.0000
+Epoch 121/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 220355488.0000 - val_loss: 265766544.0000
+Epoch 122/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 218847616.0000 - val_loss: 264917936.0000
+Epoch 123/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 218829136.0000 - val_loss: 264067408.0000
+Epoch 124/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 217139360.0000 - val_loss: 263214880.0000
+Epoch 125/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 216795424.0000 - val_loss: 262361808.0000
+Epoch 126/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 215901088.0000 - val_loss: 261509792.0000
+Epoch 127/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 214746208.0000 - val_loss: 260660400.0000
+Epoch 128/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 41ms/step - loss: 214013520.0000 - val_loss: 259813552.0000
+Epoch 129/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 213364416.0000 - val_loss: 258972032.0000
+Epoch 130/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 212720000.0000 - val_loss: 258137296.0000
+Epoch 131/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 211969568.0000 - val_loss: 257309904.0000
+Epoch 132/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 211442608.0000 - val_loss: 256491568.0000
+Epoch 133/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 210201312.0000 - val_loss: 255683680.0000
+Epoch 134/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 209669184.0000 - val_loss: 254887040.0000
+Epoch 135/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 209132672.0000 - val_loss: 254103728.0000
+Epoch 136/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 208504832.0000 - val_loss: 253336560.0000
+Epoch 137/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 207091008.0000 - val_loss: 252584976.0000
+Epoch 138/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 206510864.0000 - val_loss: 251850272.0000
+Epoch 139/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 205937072.0000 - val_loss: 251135040.0000
+Epoch 140/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 206185712.0000 - val_loss: 250442224.0000
+Epoch 141/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 204328784.0000 - val_loss: 249770656.0000
+Epoch 142/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 204100576.0000 - val_loss: 249121648.0000
+Epoch 143/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 202978400.0000 - val_loss: 248497184.0000
+Epoch 144/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 202854944.0000 - val_loss: 247897104.0000
+Epoch 145/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 201615696.0000 - val_loss: 247322688.0000
+Epoch 146/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 200712080.0000 - val_loss: 246774592.0000
+Epoch 147/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step - loss: 199961776.0000 - val_loss: 246251472.0000
+Epoch 148/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 201096784.0000 - val_loss: 245755168.0000
+Epoch 149/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 199608080.0000 - val_loss: 245289088.0000
+Epoch 150/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 198997456.0000 - val_loss: 244851536.0000
+Epoch 151/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 198484560.0000 - val_loss: 244440720.0000
+Epoch 152/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 198350064.0000 - val_loss: 244059168.0000
+Epoch 153/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 198220928.0000 - val_loss: 243705968.0000
+Epoch 154/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 197287232.0000 - val_loss: 243380048.0000
+Epoch 155/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 198550816.0000 - val_loss: 243082928.0000
+Epoch 156/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 197600288.0000 - val_loss: 242813872.0000
+Epoch 157/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 197024032.0000 - val_loss: 242569664.0000
+Epoch 158/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 196622496.0000 - val_loss: 242349568.0000
+Epoch 159/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 195909152.0000 - val_loss: 242152960.0000
+Epoch 160/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 196584768.0000 - val_loss: 241979664.0000
+Epoch 161/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 195876208.0000 - val_loss: 241827824.0000
+Epoch 162/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 194459312.0000 - val_loss: 241693232.0000
+Epoch 163/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 194125152.0000 - val_loss: 241577360.0000
+Epoch 164/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 194622656.0000 - val_loss: 241477072.0000
+Epoch 165/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 194569680.0000 - val_loss: 241392352.0000
+Epoch 166/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 193825696.0000 - val_loss: 241322992.0000
+Epoch 167/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 195227024.0000 - val_loss: 241267424.0000
+Epoch 168/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 193521936.0000 - val_loss: 241224784.0000
+Epoch 169/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 194549152.0000 - val_loss: 241192336.0000
+Epoch 170/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 193101152.0000 - val_loss: 241168208.0000
+Epoch 171/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 193746128.0000 - val_loss: 241150400.0000
+Epoch 172/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step - loss: 194293552.0000 - val_loss: 241140880.0000
+Epoch 173/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 193233616.0000 - val_loss: 241135296.0000
+Epoch 174/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 39ms/step - loss: 194100288.0000 - val_loss: 241133728.0000
+Epoch 175/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 193748336.0000 - val_loss: 241134880.0000
+Epoch 176/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 193102000.0000 - val_loss: 241138624.0000
+Epoch 177/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 192231440.0000 - val_loss: 241146640.0000
+Epoch 178/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 192684640.0000 - val_loss: 241157024.0000
+Epoch 179/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 192701088.0000 - val_loss: 241166048.0000
+Epoch 180/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191812848.0000 - val_loss: 241174592.0000
+Epoch 181/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 192657648.0000 - val_loss: 241184496.0000
+Epoch 182/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 192514480.0000 - val_loss: 241192960.0000
+Epoch 183/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 194071456.0000 - val_loss: 241201600.0000
+Epoch 184/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 192462896.0000 - val_loss: 241208400.0000
+Epoch 185/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 192078640.0000 - val_loss: 241212592.0000
+Epoch 186/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 191480528.0000 - val_loss: 241215488.0000
+Epoch 187/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 193630448.0000 - val_loss: 241214560.0000
+Epoch 188/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 192245392.0000 - val_loss: 241214656.0000
+Epoch 189/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 193066064.0000 - val_loss: 241214320.0000
+Epoch 190/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 192927680.0000 - val_loss: 241211504.0000
+Epoch 191/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 191788768.0000 - val_loss: 241209568.0000
+Epoch 192/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 191942208.0000 - val_loss: 241208848.0000
+Epoch 193/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 192169136.0000 - val_loss: 241204352.0000
+Epoch 194/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 191696720.0000 - val_loss: 241198560.0000
+Epoch 195/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 189292832.0000 - val_loss: 241193584.0000
+Epoch 196/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step - loss: 190002880.0000 - val_loss: 241188992.0000
+Epoch 197/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 43ms/step - loss: 191665840.0000 - val_loss: 241183264.0000
+Epoch 198/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191861408.0000 - val_loss: 241178448.0000
+Epoch 199/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 193083520.0000 - val_loss: 241171824.0000
+Epoch 200/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 190379968.0000 - val_loss: 241165072.0000
+Epoch 201/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191327408.0000 - val_loss: 241159344.0000
+Epoch 202/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 190558160.0000 - val_loss: 241156192.0000
+Epoch 203/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190471072.0000 - val_loss: 241150736.0000
+Epoch 204/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 191232848.0000 - val_loss: 241145408.0000
+Epoch 205/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 189318992.0000 - val_loss: 241139664.0000
+Epoch 206/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190520496.0000 - val_loss: 241132416.0000
+Epoch 207/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191073536.0000 - val_loss: 241124224.0000
+Epoch 208/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190790864.0000 - val_loss: 241115408.0000
+Epoch 209/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191579888.0000 - val_loss: 241106496.0000
+Epoch 210/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191614640.0000 - val_loss: 241095328.0000
+Epoch 211/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 190173552.0000 - val_loss: 241083360.0000
+Epoch 212/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 188789328.0000 - val_loss: 241069408.0000
+Epoch 213/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190355216.0000 - val_loss: 241055248.0000
+Epoch 214/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191094672.0000 - val_loss: 241039968.0000
+Epoch 215/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 41ms/step - loss: 190648048.0000 - val_loss: 241024976.0000
+Epoch 216/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 190251392.0000 - val_loss: 241009808.0000
+Epoch 217/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 190461216.0000 - val_loss: 240994672.0000
+Epoch 218/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 190753040.0000 - val_loss: 240979376.0000
+Epoch 219/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 190915488.0000 - val_loss: 240963344.0000
+Epoch 220/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190065120.0000 - val_loss: 240944928.0000
+Epoch 221/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 188927984.0000 - val_loss: 240926816.0000
+Epoch 222/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190178720.0000 - val_loss: 240908224.0000
+Epoch 223/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190068736.0000 - val_loss: 240888240.0000
+Epoch 224/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 189315408.0000 - val_loss: 240869664.0000
+Epoch 225/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 190612000.0000 - val_loss: 240852256.0000
+Epoch 226/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 189134016.0000 - val_loss: 240835184.0000
+Epoch 227/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 189014736.0000 - val_loss: 240819136.0000
+Epoch 228/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 188828144.0000 - val_loss: 240801808.0000
+Epoch 229/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 189712320.0000 - val_loss: 240783184.0000
+Epoch 230/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 189543632.0000 - val_loss: 240762752.0000
+Epoch 231/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 190710384.0000 - val_loss: 240740896.0000
+Epoch 232/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 188740880.0000 - val_loss: 240716320.0000
+Epoch 233/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 190168096.0000 - val_loss: 240691984.0000
+Epoch 234/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 189177968.0000 - val_loss: 240669280.0000
+Epoch 235/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 189560432.0000 - val_loss: 240646512.0000
+Epoch 236/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 189800048.0000 - val_loss: 240624656.0000
+Epoch 237/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 188434224.0000 - val_loss: 240602640.0000
+Epoch 238/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 188845088.0000 - val_loss: 240580944.0000
+Epoch 239/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 191084752.0000 - val_loss: 240560608.0000
+Epoch 240/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 186929744.0000 - val_loss: 240540960.0000
+Epoch 241/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 188173632.0000 - val_loss: 240520896.0000
+Epoch 242/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 187076944.0000 - val_loss: 240499072.0000
+Epoch 243/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 188397184.0000 - val_loss: 240477488.0000
+Epoch 244/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 186474624.0000 - val_loss: 240457888.0000
+Epoch 245/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 188148160.0000 - val_loss: 240435600.0000
+Epoch 246/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 187364608.0000 - val_loss: 240414672.0000
+Epoch 247/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 188119408.0000 - val_loss: 240394288.0000
+Epoch 248/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 188235968.0000 - val_loss: 240375152.0000
+Epoch 249/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 189834416.0000 - val_loss: 240357056.0000
+Epoch 250/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 187799328.0000 - val_loss: 240336576.0000
+Epoch 251/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 188688352.0000 - val_loss: 240318576.0000
+Epoch 252/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 187770560.0000 - val_loss: 240298992.0000
+Epoch 253/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 188689760.0000 - val_loss: 240280032.0000
+Epoch 254/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187789104.0000 - val_loss: 240260752.0000
+Epoch 255/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187667600.0000 - val_loss: 240241680.0000
+Epoch 256/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187703184.0000 - val_loss: 240221536.0000
+Epoch 257/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 187640416.0000 - val_loss: 240198944.0000
+Epoch 258/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 188997040.0000 - val_loss: 240175536.0000
+Epoch 259/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 188051936.0000 - val_loss: 240149712.0000
+Epoch 260/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 187143952.0000 - val_loss: 240123408.0000
+Epoch 261/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 187806944.0000 - val_loss: 240097168.0000
+Epoch 262/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 187247824.0000 - val_loss: 240073536.0000
+Epoch 263/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step - loss: 187142464.0000 - val_loss: 240048944.0000
+Epoch 264/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187066880.0000 - val_loss: 240027040.0000
+Epoch 265/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 187901728.0000 - val_loss: 240004880.0000
+Epoch 266/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 188301152.0000 - val_loss: 239982656.0000
+Epoch 267/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 186960576.0000 - val_loss: 239961632.0000
+Epoch 268/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187430384.0000 - val_loss: 239941424.0000
+Epoch 269/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 187917488.0000 - val_loss: 239918704.0000
+Epoch 270/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 186713680.0000 - val_loss: 239896288.0000
+Epoch 271/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 187373008.0000 - val_loss: 239871984.0000
+Epoch 272/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 187675168.0000 - val_loss: 239846080.0000
+Epoch 273/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 186405296.0000 - val_loss: 239820624.0000
+Epoch 274/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187062512.0000 - val_loss: 239797840.0000
+Epoch 275/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186396464.0000 - val_loss: 239775616.0000
+Epoch 276/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 187254528.0000 - val_loss: 239751616.0000
+Epoch 277/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187139056.0000 - val_loss: 239728976.0000
+Epoch 278/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186741360.0000 - val_loss: 239706656.0000
+Epoch 279/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187079024.0000 - val_loss: 239684016.0000
+Epoch 280/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186665728.0000 - val_loss: 239658112.0000
+Epoch 281/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 185379184.0000 - val_loss: 239633440.0000
+Epoch 282/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185042816.0000 - val_loss: 239611728.0000
+Epoch 283/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 186227536.0000 - val_loss: 239590688.0000
+Epoch 284/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186169168.0000 - val_loss: 239568064.0000
+Epoch 285/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step - loss: 187100800.0000 - val_loss: 239546096.0000
+Epoch 286/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 186839856.0000 - val_loss: 239524848.0000
+Epoch 287/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185665312.0000 - val_loss: 239506144.0000
+Epoch 288/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 185974784.0000 - val_loss: 239489728.0000
+Epoch 289/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 186804336.0000 - val_loss: 239472864.0000
+Epoch 290/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 39ms/step - loss: 186516544.0000 - val_loss: 239456576.0000
+Epoch 291/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 39ms/step - loss: 184645984.0000 - val_loss: 239445024.0000
+Epoch 292/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 186102864.0000 - val_loss: 239431456.0000
+Epoch 293/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 185866832.0000 - val_loss: 239417552.0000
+Epoch 294/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184685888.0000 - val_loss: 239401744.0000
+Epoch 295/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186637072.0000 - val_loss: 239384336.0000
+Epoch 296/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185253296.0000 - val_loss: 239369968.0000
+Epoch 297/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187285408.0000 - val_loss: 239353904.0000
+Epoch 298/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 184932512.0000 - val_loss: 239337872.0000
+Epoch 299/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 185761088.0000 - val_loss: 239325120.0000
+Epoch 300/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 185475552.0000 - val_loss: 239313456.0000
+Epoch 301/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183822320.0000 - val_loss: 239304384.0000
+Epoch 302/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 187296640.0000 - val_loss: 239294016.0000
+Epoch 303/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186704416.0000 - val_loss: 239283504.0000
+Epoch 304/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184867120.0000 - val_loss: 239269776.0000
+Epoch 305/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 186461936.0000 - val_loss: 239257040.0000
+Epoch 306/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185489216.0000 - val_loss: 239244368.0000
+Epoch 307/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184919200.0000 - val_loss: 239231248.0000
+Epoch 308/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 187139856.0000 - val_loss: 239217760.0000
+Epoch 309/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 185842160.0000 - val_loss: 239203952.0000
+Epoch 310/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186206192.0000 - val_loss: 239188208.0000
+Epoch 311/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184558512.0000 - val_loss: 239169312.0000
+Epoch 312/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186562192.0000 - val_loss: 239145232.0000
+Epoch 313/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 184971888.0000 - val_loss: 239124032.0000
+Epoch 314/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 184810144.0000 - val_loss: 239103552.0000
+Epoch 315/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184635520.0000 - val_loss: 239083024.0000
+Epoch 316/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step - loss: 185290192.0000 - val_loss: 239065456.0000
+Epoch 317/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 184168608.0000 - val_loss: 239048000.0000
+Epoch 318/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185277680.0000 - val_loss: 239028832.0000
+Epoch 319/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185563104.0000 - val_loss: 239008416.0000
+Epoch 320/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184872832.0000 - val_loss: 238991312.0000
+Epoch 321/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185189440.0000 - val_loss: 238976400.0000
+Epoch 322/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 186203376.0000 - val_loss: 238960592.0000
+Epoch 323/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 185285328.0000 - val_loss: 238943632.0000
+Epoch 324/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185475024.0000 - val_loss: 238925888.0000
+Epoch 325/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185333680.0000 - val_loss: 238907056.0000
+Epoch 326/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185797712.0000 - val_loss: 238885600.0000
+Epoch 327/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 184097056.0000 - val_loss: 238865040.0000
+Epoch 328/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 183314528.0000 - val_loss: 238844240.0000
+Epoch 329/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 184059248.0000 - val_loss: 238822592.0000
+Epoch 330/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184366128.0000 - val_loss: 238801552.0000
+Epoch 331/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182603616.0000 - val_loss: 238780624.0000
+Epoch 332/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 186592048.0000 - val_loss: 238759920.0000
+Epoch 333/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 183937344.0000 - val_loss: 238740784.0000
+Epoch 334/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 183690144.0000 - val_loss: 238722080.0000
+Epoch 335/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184926592.0000 - val_loss: 238705424.0000
+Epoch 336/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183837200.0000 - val_loss: 238688416.0000
+Epoch 337/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184725056.0000 - val_loss: 238672112.0000
+Epoch 338/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184583232.0000 - val_loss: 238654608.0000
+Epoch 339/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 185331408.0000 - val_loss: 238634912.0000
+Epoch 340/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step - loss: 184145936.0000 - val_loss: 238615616.0000
+Epoch 341/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step - loss: 183961840.0000 - val_loss: 238595920.0000
+Epoch 342/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 183537264.0000 - val_loss: 238576704.0000
+Epoch 343/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 186340144.0000 - val_loss: 238559552.0000
+Epoch 344/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 185196336.0000 - val_loss: 238544416.0000
+Epoch 345/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183148912.0000 - val_loss: 238531600.0000
+Epoch 346/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183466848.0000 - val_loss: 238522688.0000
+Epoch 347/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182284064.0000 - val_loss: 238513904.0000
+Epoch 348/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183742480.0000 - val_loss: 238506480.0000
+Epoch 349/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184313824.0000 - val_loss: 238498992.0000
+Epoch 350/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184085440.0000 - val_loss: 238487840.0000
+Epoch 351/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182967056.0000 - val_loss: 238475600.0000
+Epoch 352/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184249728.0000 - val_loss: 238460528.0000
+Epoch 353/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 183552176.0000 - val_loss: 238450256.0000
+Epoch 354/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183186880.0000 - val_loss: 238440944.0000
+Epoch 355/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 183467168.0000 - val_loss: 238433072.0000
+Epoch 356/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183850496.0000 - val_loss: 238426096.0000
+Epoch 357/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183970272.0000 - val_loss: 238415808.0000
+Epoch 358/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184584256.0000 - val_loss: 238406480.0000
+Epoch 359/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184130352.0000 - val_loss: 238395152.0000
+Epoch 360/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184882720.0000 - val_loss: 238385424.0000
+Epoch 361/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step - loss: 183495136.0000 - val_loss: 238376672.0000
+Epoch 362/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 182474880.0000 - val_loss: 238368976.0000
+Epoch 363/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182852128.0000 - val_loss: 238364656.0000
+Epoch 364/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step - loss: 183863840.0000 - val_loss: 238361504.0000
+Epoch 365/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 183122480.0000 - val_loss: 238359200.0000
+Epoch 366/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 181519888.0000 - val_loss: 238361952.0000
+Epoch 367/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 182676816.0000 - val_loss: 238362400.0000
+Epoch 368/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 185005424.0000 - val_loss: 238360864.0000
+Epoch 369/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182776448.0000 - val_loss: 238359696.0000
+Epoch 370/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183518800.0000 - val_loss: 238361088.0000
+Epoch 371/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182245712.0000 - val_loss: 238364432.0000
+Epoch 372/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 183449648.0000 - val_loss: 238368480.0000
+Epoch 373/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 181396912.0000 - val_loss: 238372624.0000
+Epoch 374/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 183361760.0000 - val_loss: 238373040.0000
+Epoch 375/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184025184.0000 - val_loss: 238369248.0000
+Epoch 376/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 181314080.0000 - val_loss: 238366944.0000
+Epoch 377/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 183405056.0000 - val_loss: 238366944.0000
+Epoch 378/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181369344.0000 - val_loss: 238365888.0000
+Epoch 379/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 183317744.0000 - val_loss: 238365056.0000
+Epoch 380/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 183496384.0000 - val_loss: 238364432.0000
+Epoch 381/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182043568.0000 - val_loss: 238361504.0000
+Epoch 382/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184355840.0000 - val_loss: 238354800.0000
+Epoch 383/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 183919648.0000 - val_loss: 238350608.0000
+Epoch 384/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 183760720.0000 - val_loss: 238343424.0000
+Epoch 385/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 183848944.0000 - val_loss: 238332912.0000
+Epoch 386/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 181242768.0000 - val_loss: 238321120.0000
+Epoch 387/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 43ms/step - loss: 183335616.0000 - val_loss: 238312992.0000
+Epoch 388/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 183600112.0000 - val_loss: 238301616.0000
+Epoch 389/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 181022480.0000 - val_loss: 238293168.0000
+Epoch 390/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184404880.0000 - val_loss: 238288768.0000
+Epoch 391/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step - loss: 183698016.0000 - val_loss: 238282160.0000
+Epoch 392/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183533824.0000 - val_loss: 238274992.0000
+Epoch 393/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182677904.0000 - val_loss: 238268096.0000
+Epoch 394/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 181558512.0000 - val_loss: 238263872.0000
+Epoch 395/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 181833184.0000 - val_loss: 238262336.0000
+Epoch 396/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181563888.0000 - val_loss: 238262272.0000
+Epoch 397/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182247392.0000 - val_loss: 238261392.0000
+Epoch 398/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182774464.0000 - val_loss: 238264192.0000
+Epoch 399/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184298928.0000 - val_loss: 238259824.0000
+Epoch 400/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182008848.0000 - val_loss: 238253024.0000
+Epoch 401/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 181927136.0000 - val_loss: 238247664.0000
+Epoch 402/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 182324416.0000 - val_loss: 238243888.0000
+Epoch 403/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 180811664.0000 - val_loss: 238243328.0000
+Epoch 404/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 179624800.0000 - val_loss: 238246256.0000
+Epoch 405/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182042224.0000 - val_loss: 238251760.0000
+Epoch 406/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182604976.0000 - val_loss: 238255280.0000
+Epoch 407/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 183448640.0000 - val_loss: 238259104.0000
+Epoch 408/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 40ms/step - loss: 181691760.0000 - val_loss: 238265856.0000
+Epoch 409/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step - loss: 182711712.0000 - val_loss: 238271776.0000
+Epoch 410/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181045872.0000 - val_loss: 238279024.0000
+Epoch 411/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181000240.0000 - val_loss: 238290880.0000
+Epoch 412/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 180123760.0000 - val_loss: 238303472.0000
+Epoch 413/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 180505184.0000 - val_loss: 238317184.0000
+Epoch 414/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182905024.0000 - val_loss: 238328288.0000
+Epoch 415/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 184072256.0000 - val_loss: 238336048.0000
+Epoch 416/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184230336.0000 - val_loss: 238339376.0000
+Epoch 417/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181393536.0000 - val_loss: 238343312.0000
+Epoch 418/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 183897568.0000 - val_loss: 238346112.0000
+Epoch 419/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182305872.0000 - val_loss: 238348448.0000
+Epoch 420/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182535072.0000 - val_loss: 238353440.0000
+Epoch 421/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 183125840.0000 - val_loss: 238358256.0000
+Epoch 422/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 181084448.0000 - val_loss: 238362528.0000
+Epoch 423/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182458064.0000 - val_loss: 238364608.0000
+Epoch 424/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 180731104.0000 - val_loss: 238366960.0000
+Epoch 425/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 183536880.0000 - val_loss: 238370688.0000
+Epoch 426/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step - loss: 182414496.0000 - val_loss: 238374064.0000
+Epoch 427/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181156992.0000 - val_loss: 238377520.0000
+Epoch 428/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181026608.0000 - val_loss: 238383776.0000
+Epoch 429/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182834688.0000 - val_loss: 238387824.0000
+Epoch 430/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181615328.0000 - val_loss: 238389760.0000
+Epoch 431/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182337296.0000 - val_loss: 238393792.0000
+Epoch 432/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step - loss: 183239216.0000 - val_loss: 238393456.0000
+Epoch 433/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 180825488.0000 - val_loss: 238394992.0000
+Epoch 434/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 180543760.0000 - val_loss: 238392624.0000
+Epoch 435/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 181221584.0000 - val_loss: 238389856.0000
+Epoch 436/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 181388304.0000 - val_loss: 238386880.0000
+Epoch 437/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 180845904.0000 - val_loss: 238392032.0000
+Epoch 438/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181650656.0000 - val_loss: 238396672.0000
+Epoch 439/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 180349824.0000 - val_loss: 238403984.0000
+Epoch 440/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step - loss: 179675760.0000 - val_loss: 238413440.0000
+Epoch 441/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 180371568.0000 - val_loss: 238422624.0000
+Epoch 442/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 180770640.0000 - val_loss: 238433200.0000
+Epoch 443/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 184713536.0000 - val_loss: 238439680.0000
+Epoch 444/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182145952.0000 - val_loss: 238442768.0000
+Epoch 445/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182333056.0000 - val_loss: 238442736.0000
+Epoch 446/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 41ms/step - loss: 184636656.0000 - val_loss: 238441344.0000
+Epoch 447/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step - loss: 181673408.0000 - val_loss: 238439104.0000
+Epoch 448/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 180143728.0000 - val_loss: 238435984.0000
+Epoch 449/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 181322480.0000 - val_loss: 238434512.0000
+Epoch 450/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 182373552.0000 - val_loss: 238429168.0000
+Epoch 451/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step - loss: 180062400.0000 - val_loss: 238424608.0000
+Epoch 452/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step - loss: 182052128.0000 - val_loss: 238420336.0000
+Epoch 453/5000
+1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step - loss: 180971584.0000 - val_loss: 238413392.0000
+29/29 ━━━━━━━━━━━━━━━━━━━━ 0s 528us/step - loss: 76308264.0000
+Test Loss: 70858080.0</code></pre>
+</div>
+</div>
+<div id="cell-8" class="cell" data-execution_count="172">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>5        3540.0
+7          66.0
+8         340.0
+10      11125.0
+14        645.0
+         ...   
+6846      992.0
+6847     1221.0
+6848    15570.0
+6850        0.0
+6851        0.0
+Length: 4551, dtype: float64</code></pre>
+</div>
+</div>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
