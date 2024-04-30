@@ -7,10 +7,10 @@ Since its rise to popularity in 2007, Airbnb has set the standard as the short-t
 
 # Data
 ## Washington DC Airbnb data
-https://insideairbnb.com/get-the-data/\
 All data file need to be downloaded by every member of the project and put into "./data/".
+https://insideairbnb.com/get-the-data/
 
 ## Zillow APi
 Zillow api by scrapeak.com to pull data\
-Sign up for a free account here: https://www.scrapeak.com/zillow-scraper/\
-Documntation for api can be found: https://docs.scrapeak.com/zillow-scraper/endpoints/listing
+Sign up for a free account here: https://www.scrapeak.com/zillow-scraper/ \
+Documntation for api can be found: https://docs.scrapeak.com/zillow-scraper/endpoints/listing \
