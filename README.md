@@ -13,4 +13,4 @@ https://insideairbnb.com/get-the-data/
 ## Zillow APi
 Zillow api by scrapeak.com to pull data\
 Sign up for a free account here: https://www.scrapeak.com/zillow-scraper/ \
-Documntation for api can be found: https://docs.scrapeak.com/zillow-scraper/endpoints/listing \
+Documntation for api can be found: https://docs.scrapeak.com/zillow-scraper/endpoints/listing
